@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Paste Clipboard to HTML</title>
+</head>
+
+<body>
+  <h1>Paste Clipboard to HTML</h1>
+
+  <label for="cleanupCheckbox">
+    <input checked="true" type="checkbox" id="cleanupCheckbox" onchange="toggleCleanup()"> Clean up HTML
+  </label>
+
+  <textarea disabled id="clipboardTextArea" style="width: 100%; height: 300px;">Press CMD+V / CTRL+V</textarea>
+
+  <script>
+    let cleanupEnabled = true;
+
+    async function pasteClipboardToTextArea() {
+      try {
+        const data = await navigator.clipboard.read();
+        const html = data[0].types.includes('text/html') ? await data[0].getType('text/html') : (() => { throw new Error('No HTML data'); })();
+        // iterate over HTML, clean up elements if enabled
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(await html.text(), 'text/html');
+        if (cleanupEnabled) {
+          const elements = doc.querySelectorAll('*');
+          elements.forEach(element => {
+            element.removeAttribute('style');
+            element.removeAttribute('class');
+            element.removeAttribute('id');
+          });
+        }
+
+        const cleanedHtml = doc.body.innerHTML;
+        document.getElementById("clipboardTextArea").value = await cleanedHtml;
+      } catch (error) {
+        const errMsg = `Failed to read clipboard data: ${error}`;
+        document.getElementById("clipboardTextArea").value = errMsg;
+        console.error('Failed to read clipboard data:', error);
+      }
+    }
+
+    function toggleCleanup() {
+      cleanupEnabled = !cleanupEnabled;
+      pasteClipboardToTextArea();
+    }
+
+    document.addEventListener("DOMContentLoaded", async function () {
+      await pasteClipboardToTextArea();
+    });
+
+    document.addEventListener("paste", async function (event) {
+      await pasteClipboardToTextArea();
+    });
+  </script>
+</body>
+
+</html>
